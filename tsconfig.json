@@ -1,0 +1,9 @@
+{
+  "compilerOptions": {
+    "target": "ES2015",              // Set the target JavaScript version (e.g., es5, es2015)
+    "module": "commonjs",             // Module system (e.g., commonjs, amd, system)
+    "outDir": "dist",                 // Output directory for compiled JavaScript files
+    "sourceMap": true
+  },
+  "include": ["src/**/*.ts"]
+}
