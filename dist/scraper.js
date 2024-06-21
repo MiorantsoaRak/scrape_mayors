@@ -28,29 +28,35 @@ function getRegionLinks() {
 function getCityLink(regionLink) {
     return __awaiter(this, void 0, void 0, function* () {
         yield page.goto(regionLink);
-        let mayor = {
-            region: '',
-            city: '',
-            name: '',
-            date: '',
-            cityHallUrl: '',
-            phoneNumber: '',
-            email: '',
-            address: ''
-        };
-        mayor = yield page.evaluate((mayor) => {
-            mayor.cityHallUrl = document.querySelector(".list-group a").getAttribute('href');
-            const element = document.querySelectorAll(".list-group-item")[0];
-            const parts = element.textContent.split(' - ');
-            mayor.city = parts[0].trim();
-            mayor.name = parts[1].trim();
+        let mayors = [];
+        mayors = yield page.evaluate((mayors) => {
+            const mayorLinks = document.querySelectorAll(".list-group-item a");
+            const element = document.querySelectorAll(".list-group-item");
             const titleElement = document.querySelector('h1.post-title');
-            mayor.region = titleElement.textContent
+            const region = titleElement.textContent
                 .replace('Maires ', '')
                 .replace('région ', '');
-            return mayor;
-        }, mayor);
-        return mayor;
+            for (let i = 0; i < mayorLinks.length; i++) {
+                let mayor = {
+                    region: '',
+                    city: '',
+                    name: '',
+                    date: '',
+                    cityHallUrl: '',
+                    phoneNumber: '',
+                    email: '',
+                    address: ''
+                };
+                mayor.cityHallUrl = mayorLinks[i].getAttribute('href');
+                const parts = element[i].textContent.split(' - ');
+                mayor.city = parts[0].trim();
+                mayor.name = parts[1].trim();
+                mayor.region = region;
+                mayors.push(mayor);
+            }
+            return mayors;
+        }, mayors);
+        return mayors;
     });
 }
 function getMayorInfo(mayor) {
@@ -75,12 +81,12 @@ function getMayorInfo(mayor) {
     const regionLinks = yield getRegionLinks();
     const mayorWithLinks = [];
     const mayors = [];
-    for (const regionLink of regionLinks) {
-        const cityLink = yield getCityLink(regionLink);
-        mayorWithLinks.push(cityLink);
-    }
+    //for (const regionLink of regionLinks) {
+    const cityLink = yield getCityLink(regionLinks[0]);
+    mayorWithLinks.push(...cityLink);
+    //}
     for (const mayor of mayorWithLinks) {
-        const mayorInfo = yield getMayorInfo(mayor);
+        const mayorInfo = yield getMayorInfo(mayorWithLinks[3]);
         mayors.push(mayorInfo);
     }
     console.log(mayors);

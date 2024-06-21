@@ -19,39 +19,47 @@ async function getRegionLinks() {
 async function getCityLink(regionLink: string) {
     await page.goto(regionLink);
 
-    let mayor: Mayor = {
-        region: '',
-        city: '',
-        name: '',
-        date: '',
-        cityHallUrl: '',
-        phoneNumber: '',
-        email: '',
-        address: ''
-    };
+    let mayors : Mayor[] = [];
 
-    mayor = await page.evaluate((mayor : Mayor) => {
-        mayor.cityHallUrl = document.querySelector(".list-group a").getAttribute('href');
-
-        const element = document.querySelectorAll(".list-group-item")[0];
-        const parts = element.textContent.split(' - ');
-        mayor.city = parts[0].trim();
-        mayor.name = parts[1].trim();
-
+    mayors  = await page.evaluate((mayors : Mayor[]) => {
+        const mayorLinks = document.querySelectorAll(".list-group-item a");
+        const element = document.querySelectorAll(".list-group-item")
         const titleElement = document.querySelector('h1.post-title');
-        mayor.region = titleElement.textContent
+
+        const region = titleElement.textContent
             .replace('Maires ', '')
             .replace('région ', '')
-        ;
 
-        return mayor;
-    }, mayor);
+        for (let i = 0; i < mayorLinks.length; i++) {
+            let mayor: Mayor = {
+                region: '',
+                city: '',
+                name: '',
+                date: '',
+                cityHallUrl: '',
+                phoneNumber: '',
+                email: '',
+                address: ''
+            };
 
-    return mayor;
+            mayor.cityHallUrl = mayorLinks[i].getAttribute('href');
+            const parts = element[i].textContent.split(' - ');
+            mayor.city = parts[0].trim();
+            mayor.name = parts[1].trim();
+            mayor.region = region;
+
+            mayors.push(mayor);
+        }
+
+        return mayors;
+    }, mayors);
+
+    return mayors;
 }
 
 async function getMayorInfo(mayor: Mayor) {
     await page.goto(mayor.cityHallUrl);
+
     return  await page.evaluate((mayor: Mayor) => {
         const pElement = document.querySelectorAll('p');
         const matchDate = pElement[1].textContent.match(/pris ses fonctions en tant que maire le (\d{2}\/\d{2}\/\d{4})/);
@@ -80,11 +88,11 @@ async function getMayorInfo(mayor: Mayor) {
 
     for (const regionLink of regionLinks) {
         const cityLink = await getCityLink(regionLink);
-        mayorWithLinks.push(cityLink);
+        mayorWithLinks.push(...cityLink);
     }
 
     for (const mayor of mayorWithLinks) {
-        const mayorInfo = await getMayorInfo(mayor);
+        const mayorInfo = await getMayorInfo(mayorWithLinks[3]);
         mayors.push(mayorInfo);
     }
 
