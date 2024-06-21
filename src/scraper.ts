@@ -3,7 +3,6 @@ import {Mayor} from './mayor';
 
 let browser: Browser;
 let page:Page;
-let mayors: { link: string, name: string }[] = [];
 
 async function init() {
     browser = await puppeteer.launch();
@@ -40,7 +39,10 @@ async function getCityLink(regionLink: string) {
         mayor.name = parts[1].trim();
 
         const titleElement = document.querySelector('h1.post-title');
-        mayor.region = titleElement.textContent.replace('Maires région ', '');
+        mayor.region = titleElement.textContent
+            .replace('Maires ', '')
+            .replace('région ', '')
+        ;
 
         return mayor;
     }, mayor);
@@ -51,15 +53,18 @@ async function getCityLink(regionLink: string) {
 async function getMayorInfo(mayor: Mayor) {
     await page.goto(mayor.cityHallUrl);
     return  await page.evaluate((mayor: Mayor) => {
-        const pElement = document.querySelector('p');
-        const matchDate = pElement.textContent.match(/pris ses fonctions en tant que maire le (\d{2}\/\d{2}\/\d{4})/);
-        mayor.date = matchDate ? matchDate[0] : '';
+        const pElement = document.querySelectorAll('p');
+        const matchDate = pElement[1].textContent.match(/pris ses fonctions en tant que maire le (\d{2}\/\d{2}\/\d{4})/);
+        mayor.date = matchDate ? matchDate[1] : '';
 
         const phoneElement = document.querySelector('span[itemprop="telephone"]');
         mayor.phoneNumber = phoneElement.textContent;
 
         const emailElement = document.querySelector('span[itemprop="email"]');
         mayor.email = emailElement.textContent;
+
+        const addressElement = document.querySelector('span[itemprop="address"]');
+        mayor.address = addressElement.textContent.replace(/\s{2,}/g, ' ').trim();//remove extra spaces
 
         return mayor;
     }, mayor);

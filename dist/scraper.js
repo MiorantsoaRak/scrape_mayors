@@ -12,7 +12,6 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const puppeteer_1 = require("puppeteer");
 let browser;
 let page;
-let mayors = [];
 function init() {
     return __awaiter(this, void 0, void 0, function* () {
         browser = yield puppeteer_1.default.launch();
@@ -46,7 +45,9 @@ function getCityLink(regionLink) {
             mayor.city = parts[0].trim();
             mayor.name = parts[1].trim();
             const titleElement = document.querySelector('h1.post-title');
-            mayor.region = titleElement.textContent.replace('Maires région ', '');
+            mayor.region = titleElement.textContent
+                .replace('Maires ', '')
+                .replace('région ', '');
             return mayor;
         }, mayor);
         return mayor;
@@ -56,13 +57,15 @@ function getMayorInfo(mayor) {
     return __awaiter(this, void 0, void 0, function* () {
         yield page.goto(mayor.cityHallUrl);
         return yield page.evaluate((mayor) => {
-            const pElement = document.querySelector('p');
-            const matchDate = pElement.textContent.match(/pris ses fonctions en tant que maire le (\d{2}\/\d{2}\/\d{4})/);
-            mayor.date = matchDate ? matchDate[0] : '';
+            const pElement = document.querySelectorAll('p');
+            const matchDate = pElement[1].textContent.match(/pris ses fonctions en tant que maire le (\d{2}\/\d{2}\/\d{4})/);
+            mayor.date = matchDate ? matchDate[1] : '';
             const phoneElement = document.querySelector('span[itemprop="telephone"]');
             mayor.phoneNumber = phoneElement.textContent;
             const emailElement = document.querySelector('span[itemprop="email"]');
             mayor.email = emailElement.textContent;
+            const addressElement = document.querySelector('span[itemprop="address"]');
+            mayor.address = addressElement.textContent.replace(/\s{2,}/g, ' ').trim(); //remove extra spaces
             return mayor;
         }, mayor);
     });
