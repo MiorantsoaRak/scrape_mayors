@@ -10,26 +10,21 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const puppeteer_1 = require("puppeteer");
-let browser;
-let page;
-function init() {
-    return __awaiter(this, void 0, void 0, function* () {
-        browser = yield puppeteer_1.default.launch();
-        page = yield browser.newPage();
-    });
-}
 function getRegionLinks() {
     return __awaiter(this, void 0, void 0, function* () {
+        const browser = yield puppeteer_1.default.launch();
+        const page = yield browser.newPage();
         yield page.goto("https://www.mon-maire.fr/maires-regions");
         return yield page.evaluate(() => Array.from(document.querySelectorAll(".list-group a"))
             .map((link) => link.getAttribute('href')));
     });
 }
-function getCityLink(regionLink_1) {
-    return __awaiter(this, arguments, void 0, function* (regionLink, mayors = []) {
+function scrapMayorInfoFromRegionLink(browser_1, regionLink_1) {
+    return __awaiter(this, arguments, void 0, function* (browser, regionLink, mayors = []) {
         let hasNextPage = true;
         try {
             console.log('Getting mayors from', regionLink);
+            const page = yield browser.newPage();
             yield page.goto(regionLink);
             const scrapedData = yield page.evaluate((mayors) => {
                 const mayorLinks = document.querySelectorAll(".list-group-item a");
@@ -62,7 +57,7 @@ function getCityLink(regionLink_1) {
             mayors = scrapedData.mayors;
             let nextPage = scrapedData.nextButton;
             if (nextPage) {
-                return getCityLink(nextPage, mayors);
+                return scrapMayorInfoFromRegionLink(browser, nextPage, mayors);
             }
             else {
                 return mayors;
@@ -75,9 +70,10 @@ function getCityLink(regionLink_1) {
         }
     });
 }
-function getMayorInfo(mayor) {
+function getMayorInfo(browser, mayor) {
     return __awaiter(this, void 0, void 0, function* () {
         console.log('Getting mayor info from', mayor.cityHallUrl);
+        const page = yield browser.newPage();
         yield page.goto(mayor.cityHallUrl);
         return yield page.evaluate((mayor) => {
             const pElement = document.querySelectorAll('p');
@@ -95,17 +91,15 @@ function getMayorInfo(mayor) {
 }
 function extractMayorData() {
     return __awaiter(this, void 0, void 0, function* () {
-        yield init();
+        const browser = yield puppeteer_1.default.launch();
         const regionLinks = yield getRegionLinks();
-        const mayorWithLinks = [];
         const mayors = [];
         for (const regionLink of regionLinks) {
-            const cityLink = yield getCityLink(regionLink);
-            mayorWithLinks.push(...cityLink);
-        }
-        for (const mayor of mayorWithLinks) {
-            const mayorInfo = yield getMayorInfo(mayor);
-            mayors.push(mayorInfo);
+            const regionMayors = yield scrapMayorInfoFromRegionLink(browser, regionLink);
+            for (const mayor of regionMayors) {
+                const mayorInfo = yield getMayorInfo(browser, mayor);
+                mayors.push(mayorInfo);
+            }
         }
         console.log(mayors);
         yield browser.close();

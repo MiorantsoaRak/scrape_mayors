@@ -1,14 +1,11 @@
 import puppeteer, {Browser, Page} from "puppeteer";
 import {Mayor} from './mayor';
 
-let browser: Browser;
-let page:Page;
 
-async function init() {
-    browser = await puppeteer.launch();
-    page = await browser.newPage();
-}
 async function getRegionLinks() {
+    const browser = await puppeteer.launch();
+    const page = await browser.newPage();
+
     await page.goto("https://www.mon-maire.fr/maires-regions");
     return  await page.evaluate(() =>
         Array.from(document.querySelectorAll(".list-group a"))
@@ -16,10 +13,12 @@ async function getRegionLinks() {
     );
 }
 
-async function getCityLink(regionLink: string, mayors: Mayor[] = []) {
+async function scrapMayorInfoFromRegionLink(browser: Browser, regionLink: string, mayors: Mayor[] = []) {
     let hasNextPage = true;
     try{
         console.log('Getting mayors from', regionLink);
+        const page = await browser.newPage();
+
         await page.goto(regionLink);
 
         const scrapedData  = await page.evaluate((mayors) => {
@@ -32,7 +31,7 @@ async function getCityLink(regionLink: string, mayors: Mayor[] = []) {
                 .replace('Maires ', '')
                 .replace('région ', '')
 
-            for (let i = 0; i < mayorLinks.length; i++) {
+            for (let i = 0; i < 1 ; i++) {
                 let mayor: Mayor = {
                     region: '',
                     city: '',
@@ -60,7 +59,7 @@ async function getCityLink(regionLink: string, mayors: Mayor[] = []) {
         let nextPage = scrapedData.nextButton;
 
         if(nextPage) {
-            return  getCityLink(nextPage, mayors);
+            return  scrapMayorInfoFromRegionLink(browser, nextPage, mayors);
         }
         else {
             return mayors;
@@ -72,8 +71,11 @@ async function getCityLink(regionLink: string, mayors: Mayor[] = []) {
     }
 }
 
-async function getMayorInfo(mayor: Mayor) {
+async function getMayorInfo(browser: Browser, mayor: Mayor) {
     console.log('Getting mayor info from', mayor.cityHallUrl);
+
+    const page = await browser.newPage();
+
     await page.goto(mayor.cityHallUrl);
 
     return  await page.evaluate((mayor: Mayor) => {
@@ -96,20 +98,17 @@ async function getMayorInfo(mayor: Mayor) {
 }
 
 async function extractMayorData() {
-    await init();
+    const browser = await puppeteer.launch();
 
     const regionLinks = await getRegionLinks();
-    const mayorWithLinks : Mayor[] = [];
     const mayors: Mayor[] = [];
 
     for (const regionLink of regionLinks) {
-        const cityLink = await getCityLink(regionLink);
-        mayorWithLinks.push(...cityLink);
-    }
-
-    for (const mayor of mayorWithLinks) {
-        const mayorInfo = await getMayorInfo(mayor);
-        mayors.push(mayorInfo);
+        const regionMayors = await scrapMayorInfoFromRegionLink(browser, regionLink);
+        for(const mayor of regionMayors) {
+            const mayorInfo = await getMayorInfo(browser, mayor);
+            mayors.push(mayorInfo);
+        }
     }
 
     console.log(mayors);
