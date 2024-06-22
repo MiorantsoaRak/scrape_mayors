@@ -11,108 +11,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const puppeteer_1 = require("puppeteer");
 const fs = require("fs");
-function getRegionLinks() {
-    return __awaiter(this, void 0, void 0, function* () {
-        const browser = yield puppeteer_1.default.launch();
-        const page = yield browser.newPage();
-        yield page.goto("https://www.mon-maire.fr/maires-regions");
-        return yield page.evaluate(() => Array.from(document.querySelectorAll(".list-group a"))
-            .map((link) => link.getAttribute('href')));
-    });
-}
-function scrapMayorInfoFromRegionLink(browser_1, regionLink_1) {
-    return __awaiter(this, arguments, void 0, function* (browser, regionLink, mayors = []) {
-        let hasNextPage = true;
-        console.log('Getting mayors from', regionLink);
-        const page = yield browser.newPage();
-        try {
-            yield page.goto(regionLink);
-            const scrapedData = yield page.evaluate((mayors) => {
-                const mayorLinks = document.querySelectorAll(".list-group-item a");
-                const element = document.querySelectorAll(".list-group-item");
-                const titleElement = document.querySelector('h1.post-title');
-                const nextButton = document.querySelector('.pagination-wrapper .next.page-numbers');
-                const region = titleElement.textContent
-                    .replace('Maires ', '')
-                    .replace('région ', '');
-                for (let i = 0; i < 1; i++) {
-                    let mayor = {
-                        region: '',
-                        city: '',
-                        name: '',
-                        date: '',
-                        cityHallUrl: '',
-                        phoneNumber: '',
-                        email: '',
-                        address: ''
-                    };
-                    mayor.cityHallUrl = mayorLinks[i].getAttribute('href');
-                    const parts = element[i].textContent.split(' - ');
-                    mayor.city = parts[0].trim();
-                    mayor.name = parts[1].trim();
-                    mayor.region = region;
-                    mayors.push(mayor);
-                }
-                return { mayors, nextButton: nextButton ? nextButton.getAttribute('href') : null };
-            }, mayors);
-            mayors = scrapedData.mayors;
-            let nextPage = scrapedData.nextButton;
-            if (nextPage) {
-                return scrapMayorInfoFromRegionLink(browser, nextPage, mayors);
-            }
-            else {
-                return mayors;
-            }
-        }
-        catch (e) {
-            console.log('Error getting mayors from', regionLink);
-            console.log(e);
-            return mayors;
-        }
-        finally {
-            yield page.close();
-        }
-    });
-}
-function getMayorInfo(browser, mayor) {
-    return __awaiter(this, void 0, void 0, function* () {
-        console.log('Getting mayor info from', mayor.cityHallUrl);
-        const page = yield browser.newPage();
-        try {
-            yield page.goto(mayor.cityHallUrl);
-            return yield page.evaluate((mayor) => {
-                const pElement = document.querySelectorAll('p');
-                const matchDate = pElement[1].textContent.match(/pris ses fonctions en tant que maire le (\d{2}\/\d{2}\/\d{4})/);
-                mayor.date = matchDate ? matchDate[1] : '';
-                const phoneElement = document.querySelector('span[itemprop="telephone"]');
-                mayor.phoneNumber = phoneElement.textContent;
-                const emailElement = document.querySelector('span[itemprop="email"]');
-                mayor.email = emailElement.textContent;
-                const addressElement = document.querySelector('span[itemprop="address"]');
-                mayor.address = addressElement.textContent.replace(/\s{2,}/g, ' ').trim(); //remove extra spaces
-                return mayor;
-            }, mayor);
-        }
-        catch (e) {
-            console.log('Error getting mayor info from', mayor.cityHallUrl);
-            console.log(e);
-            return mayor;
-        }
-        finally {
-            yield page.close();
-        }
-    });
-}
+const scrapeFunctions_1 = require("./scrapeFunctions");
 function extractMayorData() {
     return __awaiter(this, void 0, void 0, function* () {
         const browser = yield puppeteer_1.default.launch();
         try {
-            const regionLinks = yield getRegionLinks();
+            const regionLinks = yield (0, scrapeFunctions_1.getRegionLinks)();
             const mayors = [];
             for (const regionLink of regionLinks) {
-                const regionMayors = yield scrapMayorInfoFromRegionLink(browser, regionLink);
+                const regionMayors = yield (0, scrapeFunctions_1.scrapMayorInfoFromRegionLink)(browser, regionLink);
                 for (const mayor of regionMayors) {
-                    const mayorInfo = yield getMayorInfo(browser, mayor);
+                    const mayorInfo = yield (0, scrapeFunctions_1.completeMayorInfo)(browser, mayor);
                     mayors.push(mayorInfo);
                 }
             }
@@ -126,7 +35,7 @@ function extractMayorData() {
                 `"${mayor.address}"`,
                 `"${mayor.cityHallUrl}"`
             ]).join('\n');
-            fs.writeFileSync('mayors.csv', `Région,Ville,Nom du maire,Date de prise de fonction,Téléphone,Email,Adresse mairie,URL\n${csvData}`, 'utf-8');
+            createCsvFile(`Région,Ville,Nom du maire,Date de prise de fonction,Téléphone,Email,Adresse mairie,URL\n${csvData}`);
         }
         catch (e) {
             console.log(e);
@@ -137,6 +46,9 @@ function extractMayorData() {
             process.exit(0);
         }
     });
+}
+function createCsvFile(csvData, fileName = 'mayors.csv') {
+    fs.writeFileSync(fileName, csvData);
 }
 (() => __awaiter(void 0, void 0, void 0, function* () {
     yield extractMayorData();
