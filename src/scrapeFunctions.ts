@@ -2,6 +2,10 @@ import * as fs from "fs";
 import puppeteer, {Browser} from "puppeteer";
 import {Mayor} from "./mayor";
 
+/**
+ * Function to get all region links from the website.
+ * @returns {Promise<string[]>} A promise that resolves to an array of region links.
+ */
 async function getRegionLinks() {
     const browser = await puppeteer.launch();
     const page = await browser.newPage();
@@ -13,6 +17,13 @@ async function getRegionLinks() {
     );
 }
 
+/**
+ * Function to scrape mayor information from a given region link.
+ * @param {Browser} browser - Puppeteer browser instance.
+ * @param {string} regionLink - The link of the region to scrape.
+ * @param {Mayor[]} mayors - An array of Mayor objects to populate with scraped data.
+ * @returns {Promise<Mayor[]>} A promise that resolves to an array of Mayor objects.
+ */
 async function scrapMayorInfoFromRegionLink(browser: Browser, regionLink: string, mayors: Mayor[] = []) {
     let hasNextPage = true;
     console.log('Getting mayors from', regionLink);
@@ -72,6 +83,12 @@ async function scrapMayorInfoFromRegionLink(browser: Browser, regionLink: string
     }
 }
 
+/**
+ * Function to complete information for a given Mayor object.
+ * @param {Browser} browser - Puppeteer browser instance.
+ * @param {Mayor} mayor - The Mayor object to complete.
+ * @returns {Promise<Mayor>} A promise that resolves to a completed Mayor object.
+ */
 async function completeMayorInfo(browser: Browser, mayor: Mayor) {
     console.log('Getting mayor info from', mayor.cityHallUrl);
 

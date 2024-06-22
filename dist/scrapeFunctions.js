@@ -13,6 +13,10 @@ exports.getRegionLinks = getRegionLinks;
 exports.scrapMayorInfoFromRegionLink = scrapMayorInfoFromRegionLink;
 exports.completeMayorInfo = completeMayorInfo;
 const puppeteer_1 = require("puppeteer");
+/**
+ * Function to get all region links from the website.
+ * @returns {Promise<string[]>} A promise that resolves to an array of region links.
+ */
 function getRegionLinks() {
     return __awaiter(this, void 0, void 0, function* () {
         const browser = yield puppeteer_1.default.launch();
@@ -22,6 +26,13 @@ function getRegionLinks() {
             .map((link) => link.getAttribute('href')));
     });
 }
+/**
+ * Function to scrape mayor information from a given region link.
+ * @param {Browser} browser - Puppeteer browser instance.
+ * @param {string} regionLink - The link of the region to scrape.
+ * @param {Mayor[]} mayors - An array of Mayor objects to populate with scraped data.
+ * @returns {Promise<Mayor[]>} A promise that resolves to an array of Mayor objects.
+ */
 function scrapMayorInfoFromRegionLink(browser_1, regionLink_1) {
     return __awaiter(this, arguments, void 0, function* (browser, regionLink, mayors = []) {
         let hasNextPage = true;
@@ -76,6 +87,12 @@ function scrapMayorInfoFromRegionLink(browser_1, regionLink_1) {
         }
     });
 }
+/**
+ * Function to complete information for a given Mayor object.
+ * @param {Browser} browser - Puppeteer browser instance.
+ * @param {Mayor} mayor - The Mayor object to complete.
+ * @returns {Promise<Mayor>} A promise that resolves to a completed Mayor object.
+ */
 function completeMayorInfo(browser, mayor) {
     return __awaiter(this, void 0, void 0, function* () {
         console.log('Getting mayor info from', mayor.cityHallUrl);
