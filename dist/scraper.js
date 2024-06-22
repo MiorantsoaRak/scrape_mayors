@@ -25,42 +25,59 @@ function getRegionLinks() {
             .map((link) => link.getAttribute('href')));
     });
 }
-function getCityLink(regionLink) {
-    return __awaiter(this, void 0, void 0, function* () {
-        yield page.goto(regionLink);
-        let mayors = [];
-        mayors = yield page.evaluate((mayors) => {
-            const mayorLinks = document.querySelectorAll(".list-group-item a");
-            const element = document.querySelectorAll(".list-group-item");
-            const titleElement = document.querySelector('h1.post-title');
-            const region = titleElement.textContent
-                .replace('Maires ', '')
-                .replace('région ', '');
-            for (let i = 0; i < mayorLinks.length; i++) {
-                let mayor = {
-                    region: '',
-                    city: '',
-                    name: '',
-                    date: '',
-                    cityHallUrl: '',
-                    phoneNumber: '',
-                    email: '',
-                    address: ''
-                };
-                mayor.cityHallUrl = mayorLinks[i].getAttribute('href');
-                const parts = element[i].textContent.split(' - ');
-                mayor.city = parts[0].trim();
-                mayor.name = parts[1].trim();
-                mayor.region = region;
-                mayors.push(mayor);
+function getCityLink(regionLink_1) {
+    return __awaiter(this, arguments, void 0, function* (regionLink, mayors = []) {
+        let hasNextPage = true;
+        try {
+            console.log('Getting mayors from', regionLink);
+            yield page.goto(regionLink);
+            const scrapedData = yield page.evaluate((mayors) => {
+                const mayorLinks = document.querySelectorAll(".list-group-item a");
+                const element = document.querySelectorAll(".list-group-item");
+                const titleElement = document.querySelector('h1.post-title');
+                const nextButton = document.querySelector('.pagination-wrapper .next.page-numbers');
+                const region = titleElement.textContent
+                    .replace('Maires ', '')
+                    .replace('région ', '');
+                for (let i = 0; i < 1; i++) {
+                    let mayor = {
+                        region: '',
+                        city: '',
+                        name: '',
+                        date: '',
+                        cityHallUrl: '',
+                        phoneNumber: '',
+                        email: '',
+                        address: ''
+                    };
+                    mayor.cityHallUrl = mayorLinks[i].getAttribute('href');
+                    const parts = element[i].textContent.split(' - ');
+                    mayor.city = parts[0].trim();
+                    mayor.name = parts[1].trim();
+                    mayor.region = region;
+                    mayors.push(mayor);
+                }
+                return { mayors, nextButton: nextButton ? nextButton.getAttribute('href') : null };
+            }, mayors);
+            mayors = scrapedData.mayors;
+            let nextPage = scrapedData.nextButton;
+            if (nextPage) {
+                return getCityLink(nextPage, mayors);
             }
+            else {
+                return mayors;
+            }
+        }
+        catch (e) {
+            console.log('Error getting mayors from', regionLink);
+            console.log(e);
             return mayors;
-        }, mayors);
-        return mayors;
+        }
     });
 }
 function getMayorInfo(mayor) {
     return __awaiter(this, void 0, void 0, function* () {
+        console.log('Getting mayor info from', mayor.cityHallUrl);
         yield page.goto(mayor.cityHallUrl);
         return yield page.evaluate((mayor) => {
             const pElement = document.querySelectorAll('p');
@@ -76,20 +93,25 @@ function getMayorInfo(mayor) {
         }, mayor);
     });
 }
+function extractMayorData() {
+    return __awaiter(this, void 0, void 0, function* () {
+        yield init();
+        const regionLinks = yield getRegionLinks();
+        const mayorWithLinks = [];
+        const mayors = [];
+        for (const regionLink of regionLinks) {
+            const cityLink = yield getCityLink(regionLink);
+            mayorWithLinks.push(...cityLink);
+        }
+        for (const mayor of mayorWithLinks) {
+            const mayorInfo = yield getMayorInfo(mayor);
+            mayors.push(mayorInfo);
+        }
+        console.log(mayors);
+        yield browser.close();
+    });
+}
 (() => __awaiter(void 0, void 0, void 0, function* () {
-    yield init();
-    const regionLinks = yield getRegionLinks();
-    const mayorWithLinks = [];
-    const mayors = [];
-    //for (const regionLink of regionLinks) {
-    const cityLink = yield getCityLink(regionLinks[0]);
-    mayorWithLinks.push(...cityLink);
-    //}
-    for (const mayor of mayorWithLinks) {
-        const mayorInfo = yield getMayorInfo(mayorWithLinks[3]);
-        mayors.push(mayorInfo);
-    }
-    console.log(mayors);
-    yield browser.close();
+    yield extractMayorData();
 }))();
 //# sourceMappingURL=scraper.js.map

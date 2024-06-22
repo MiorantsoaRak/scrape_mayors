@@ -16,48 +16,64 @@ async function getRegionLinks() {
     );
 }
 
-async function getCityLink(regionLink: string) {
-    await page.goto(regionLink);
+async function getCityLink(regionLink: string, mayors: Mayor[] = []) {
+    let hasNextPage = true;
+    try{
+        console.log('Getting mayors from', regionLink);
+        await page.goto(regionLink);
 
-    let mayors : Mayor[] = [];
+        const scrapedData  = await page.evaluate((mayors) => {
+            const mayorLinks = document.querySelectorAll(".list-group-item a");
+            const element = document.querySelectorAll(".list-group-item")
+            const titleElement = document.querySelector('h1.post-title');
+            const nextButton = document.querySelector('.pagination-wrapper .next.page-numbers');
 
-    mayors  = await page.evaluate((mayors : Mayor[]) => {
-        const mayorLinks = document.querySelectorAll(".list-group-item a");
-        const element = document.querySelectorAll(".list-group-item")
-        const titleElement = document.querySelector('h1.post-title');
+            const region = titleElement.textContent
+                .replace('Maires ', '')
+                .replace('région ', '')
 
-        const region = titleElement.textContent
-            .replace('Maires ', '')
-            .replace('région ', '')
+            for (let i = 0; i < mayorLinks.length; i++) {
+                let mayor: Mayor = {
+                    region: '',
+                    city: '',
+                    name: '',
+                    date: '',
+                    cityHallUrl: '',
+                    phoneNumber: '',
+                    email: '',
+                    address: ''
+                };
 
-        for (let i = 0; i < mayorLinks.length; i++) {
-            let mayor: Mayor = {
-                region: '',
-                city: '',
-                name: '',
-                date: '',
-                cityHallUrl: '',
-                phoneNumber: '',
-                email: '',
-                address: ''
-            };
+                mayor.cityHallUrl = mayorLinks[i].getAttribute('href');
+                const parts = element[i].textContent.split(' - ');
+                mayor.city = parts[0].trim();
+                mayor.name = parts[1].trim();
+                mayor.region = region;
 
-            mayor.cityHallUrl = mayorLinks[i].getAttribute('href');
-            const parts = element[i].textContent.split(' - ');
-            mayor.city = parts[0].trim();
-            mayor.name = parts[1].trim();
-            mayor.region = region;
+                mayors.push(mayor);
+            }
 
-            mayors.push(mayor);
+            return  {mayors, nextButton: nextButton ? nextButton.getAttribute('href') : null};
+        }, mayors);
+
+        mayors = scrapedData.mayors;
+        let nextPage = scrapedData.nextButton;
+
+        if(nextPage) {
+            return  getCityLink(nextPage, mayors);
         }
-
+        else {
+            return mayors;
+        }
+    } catch (e) {
+        console.log('Error getting mayors from', regionLink);
+        console.log(e);
         return mayors;
-    }, mayors);
-
-    return mayors;
+    }
 }
 
 async function getMayorInfo(mayor: Mayor) {
+    console.log('Getting mayor info from', mayor.cityHallUrl);
     await page.goto(mayor.cityHallUrl);
 
     return  await page.evaluate((mayor: Mayor) => {
@@ -79,7 +95,7 @@ async function getMayorInfo(mayor: Mayor) {
 
 }
 
-(async () => {
+async function extractMayorData() {
     await init();
 
     const regionLinks = await getRegionLinks();
@@ -92,11 +108,15 @@ async function getMayorInfo(mayor: Mayor) {
     }
 
     for (const mayor of mayorWithLinks) {
-        const mayorInfo = await getMayorInfo(mayorWithLinks[3]);
+        const mayorInfo = await getMayorInfo(mayor);
         mayors.push(mayorInfo);
     }
 
     console.log(mayors);
 
     await browser.close();
+}
+
+(async () => {
+    await extractMayorData()
 })();
