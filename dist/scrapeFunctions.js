@@ -26,10 +26,10 @@ function scrapMayorInfoFromRegionLink(browser_1, regionLink_1) {
     return __awaiter(this, arguments, void 0, function* (browser, regionLink, mayors = []) {
         let hasNextPage = true;
         console.log('Getting mayors from', regionLink);
-        const page = yield browser.newPage();
+        const currentPage = yield browser.newPage();
         try {
-            yield page.goto(regionLink);
-            const scrapedData = yield page.evaluate((mayors) => {
+            yield currentPage.goto(regionLink);
+            const scrapedData = yield currentPage.evaluate((mayors) => {
                 const mayorLinks = document.querySelectorAll(".list-group-item a");
                 const element = document.querySelectorAll(".list-group-item");
                 const titleElement = document.querySelector('h1.post-title');
@@ -37,7 +37,7 @@ function scrapMayorInfoFromRegionLink(browser_1, regionLink_1) {
                 const region = titleElement.textContent
                     .replace('Maires ', '')
                     .replace('région ', '');
-                for (let i = 0; i < 1; i++) {
+                for (let i = 0; i < mayorLinks.length; i++) {
                     let mayor = {
                         region: '',
                         city: '',
@@ -72,7 +72,7 @@ function scrapMayorInfoFromRegionLink(browser_1, regionLink_1) {
             return mayors;
         }
         finally {
-            yield page.close();
+            yield currentPage.close();
         }
     });
 }
@@ -81,17 +81,17 @@ function completeMayorInfo(browser, mayor) {
         console.log('Getting mayor info from', mayor.cityHallUrl);
         const page = yield browser.newPage();
         try {
-            yield page.goto(mayor.cityHallUrl);
+            yield page.goto(mayor.cityHallUrl, { timeout: 60000 });
             return yield page.evaluate((mayor) => {
                 const pElement = document.querySelectorAll('p');
                 const matchDate = pElement[1].textContent.match(/pris ses fonctions en tant que maire le (\d{2}\/\d{2}\/\d{4})/);
                 mayor.date = matchDate ? matchDate[1] : '';
                 const phoneElement = document.querySelector('span[itemprop="telephone"]');
-                mayor.phoneNumber = phoneElement.textContent;
+                mayor.phoneNumber = phoneElement ? phoneElement.textContent : '';
                 const emailElement = document.querySelector('span[itemprop="email"]');
-                mayor.email = emailElement.textContent;
+                mayor.email = emailElement ? emailElement.textContent : '';
                 const addressElement = document.querySelector('span[itemprop="address"]');
-                mayor.address = addressElement.textContent.replace(/\s{2,}/g, ' ').trim(); //remove extra spaces
+                mayor.address = addressElement ? addressElement.textContent.replace(/\s{2,}/g, ' ').trim() : ''; //remove extra spaces
                 return mayor;
             }, mayor);
         }

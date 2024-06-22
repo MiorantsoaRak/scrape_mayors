@@ -16,12 +16,12 @@ async function getRegionLinks() {
 async function scrapMayorInfoFromRegionLink(browser: Browser, regionLink: string, mayors: Mayor[] = []) {
     let hasNextPage = true;
     console.log('Getting mayors from', regionLink);
-    const page = await browser.newPage();
+    const currentPage = await browser.newPage();
 
     try{
-        await page.goto(regionLink);
+        await currentPage.goto(regionLink);
 
-        const scrapedData  = await page.evaluate((mayors) => {
+        const scrapedData  = await currentPage.evaluate((mayors) => {
             const mayorLinks = document.querySelectorAll(".list-group-item a");
             const element = document.querySelectorAll(".list-group-item")
             const titleElement = document.querySelector('h1.post-title');
@@ -31,7 +31,7 @@ async function scrapMayorInfoFromRegionLink(browser: Browser, regionLink: string
                 .replace('Maires ', '')
                 .replace('région ', '')
 
-            for (let i = 0; i < 1 ; i++) {
+            for (let i = 0; i < mayorLinks.length ; i++) {
                 let mayor: Mayor = {
                     region: '',
                     city: '',
@@ -68,7 +68,7 @@ async function scrapMayorInfoFromRegionLink(browser: Browser, regionLink: string
         console.log(e);
         return mayors;
     } finally {
-        await page.close();
+        await currentPage.close();
     }
 }
 
@@ -77,7 +77,7 @@ async function completeMayorInfo(browser: Browser, mayor: Mayor) {
 
     const page = await browser.newPage();
     try{
-        await page.goto(mayor.cityHallUrl);
+        await page.goto(mayor.cityHallUrl, {timeout: 60000});
 
         return  await page.evaluate((mayor: Mayor) => {
             const pElement = document.querySelectorAll('p');
@@ -85,13 +85,13 @@ async function completeMayorInfo(browser: Browser, mayor: Mayor) {
             mayor.date = matchDate ? matchDate[1] : '';
 
             const phoneElement = document.querySelector('span[itemprop="telephone"]');
-            mayor.phoneNumber = phoneElement.textContent;
+            mayor.phoneNumber = phoneElement ? phoneElement.textContent : '';
 
             const emailElement = document.querySelector('span[itemprop="email"]');
-            mayor.email = emailElement.textContent;
+            mayor.email = emailElement ? emailElement.textContent : '';
 
             const addressElement = document.querySelector('span[itemprop="address"]');
-            mayor.address = addressElement.textContent.replace(/\s{2,}/g, ' ').trim();//remove extra spaces
+            mayor.address = addressElement ? addressElement.textContent.replace(/\s{2,}/g, ' ').trim() : '';//remove extra spaces
 
             return mayor;
         }, mayor);
